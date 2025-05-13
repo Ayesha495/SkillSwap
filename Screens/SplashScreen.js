@@ -21,7 +21,7 @@ export default function SplashScreen({ navigation}) {
             start= {{ x: 2, y: 1}}
             end= {{ x: 2, y: 0 }}
         >
-            {/* <Image style={styles.img} source={require('../assets/Persons exchanging skills.png' )}/> */}
+            <Image style={styles.img} source={require('../assets/Guide1 Pic.jpg' )}/>
             <Text style={styles.text}>Skill Swap</Text>
             <StatusBar style="auto" />
         </LinearGradient>

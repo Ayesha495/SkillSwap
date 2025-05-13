@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { View, TextInput, Button, Text, StyleSheet, Alert } from 'react-native';
 import { signInWithEmailAndPassword } from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '../firebase';
+import { AuthContext } from '../AuthContext'; // import context
 
 export default function LoginScreen({ navigation }) {
+  const { setIsLoggedIn } = useContext(AuthContext);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -17,8 +20,11 @@ export default function LoginScreen({ navigation }) {
         return;
       }
 
+      await AsyncStorage.setItem('user', JSON.stringify(user));
+      setIsLoggedIn(true); // This triggers re-render in App.js
+
       Alert.alert('Login Successful', 'Welcome!');
-      navigation.navigate('Profile');
+      // No need to navigate manually anymore
     } catch (err) {
       console.error('Login error:', err.code, err.message);
       switch (err.code) {
