@@ -8,7 +8,7 @@ export default function SplashScreen({ navigation}) {
 
     useEffect(() => {
         const timer = setTimeout(() => {
-            navigation.replace('Guide1'); 
+            navigation.navigate('Guide1'); 
         }, 4000); 
 
         return () => clearTimeout(timer); // Cleanup in case component unmounts early

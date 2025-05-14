@@ -7,6 +7,8 @@ import SignupScreen from './Screens/SignupScreen';
 import OnboardingScreen from './Screens/OnboardingScreen';
 import MainTabs from './Screens/MainTabs';
 import SplashScreen from './Screens/SplashScreen';
+import GuideScreen1 from './Screens/GuideScreen1';
+
 
 const Stack = createNativeStackNavigator();
 
@@ -18,7 +20,10 @@ function AppInner() {
   return (
     <NavigationContainer>
       {isLoggedIn ? (
-        <MainTabs />
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="MainTabs" component={MainTabs} />
+        </Stack.Navigator>
+
       ) : (
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="Login" component={LoginScreen} />

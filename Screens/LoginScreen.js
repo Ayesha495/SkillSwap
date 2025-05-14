@@ -3,7 +3,9 @@ import { View, TextInput, Button, Text, StyleSheet, Alert } from 'react-native';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '../firebase';
-import { AuthContext } from '../AuthContext'; // import context
+import { AuthContext } from '../AuthContext'; 
+import { sendPasswordResetEmail } from 'firebase/auth'; // Import the function to send password reset email
+import { TouchableOpacity } from 'react-native-gesture-handler'; // Import TouchableOpacity for the "Forgot Password?" link
 
 export default function LoginScreen({ navigation }) {
   const { setIsLoggedIn } = useContext(AuthContext);
@@ -43,6 +45,20 @@ export default function LoginScreen({ navigation }) {
     }
   };
 
+  const handleForgotPassword = async () => {
+  if (!email) {
+    Alert.alert('Enter your email first');
+    return;
+  }
+
+  try {
+    await sendPasswordResetEmail(auth, email);
+    Alert.alert('Password Reset', 'A reset link has been sent to your email.');
+  } catch (error) {
+    Alert.alert('Error', error.message);
+  }
+};
+
   return (
     <View style={styles.container}>
       <TextInput placeholder="Email" value={email} onChangeText={setEmail} style={styles.input} />
@@ -51,6 +67,9 @@ export default function LoginScreen({ navigation }) {
       <Text onPress={() => navigation.navigate('Signup')} style={styles.link}>
         Don't have an account? Sign up
       </Text>
+  <Text style={styles.forgotText} onPress={handleForgotPassword}>Forgot Password?</Text>
+
+
     </View>
   );
 }
@@ -58,5 +77,12 @@ export default function LoginScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { padding: 20 },
   input: { borderBottomWidth: 1, marginBottom: 15 },
-  link: { color: 'blue', marginTop: 20 }
+  link: { color: 'blue', marginTop: 20 },
+  forgotText: {
+  marginTop: 10,
+  color: '#D0604C',
+  textAlign: 'center',
+  textDecorationLine: 'underline',
+}
+
 });

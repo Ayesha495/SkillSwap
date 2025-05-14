@@ -59,7 +59,8 @@ export default function OnboardingScreen({ navigation }) {
       />
 
       <Button title="Continue" onPress={handleContinue} />
-      <Button title="Skip" onPress={() => navigation.replace('MainTabs')} />
+      <Button title="Skip" onPress={() => navigation.navigate('MainTabs')
+} />
 
     </ScrollView>
   );
