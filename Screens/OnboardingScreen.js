@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { View, TextInput, Button, StyleSheet, Alert, ScrollView } from 'react-native';
+import { Text, View, TextInput, Button, StyleSheet, Alert, ScrollView, TouchableOpacity } from 'react-native';
 import { getDatabase, ref, set } from 'firebase/database';
 import { auth } from '../firebase';
+import styles from '../Styles/OnboardStyles'; 
+
 
 export default function OnboardingScreen({ navigation }) {
   const [name, setName] = useState('');
@@ -32,6 +34,10 @@ export default function OnboardingScreen({ navigation }) {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.text}>
+        Create Your SkillSwap Profile
+        </Text>
+      <View>
       <TextInput
         placeholder="Full Name"
         value={name}
@@ -57,24 +63,18 @@ export default function OnboardingScreen({ navigation }) {
         onChangeText={setSkillsToLearn}
         style={styles.input}
       />
+      </View>
+
+      <TouchableOpacity style={styles.button} onPress={handleContinue}>
+        <Text style={styles.buttonText}>Continue</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('MainTabs')} >
+        <Text style={styles.buttonText}>Skip</Text>
+      </TouchableOpacity>
 
       <Button title="Continue" onPress={handleContinue} />
-      <Button title="Skip" onPress={() => navigation.navigate('MainTabs')
-} />
+      <Button title="Skip" onPress={() => navigation.replace('MainTabs')} />
 
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-    flexGrow: 1,
-    justifyContent: 'center'
-  },
-  input: {
-    borderBottomWidth: 1,
-    marginBottom: 20,
-    padding: 10
-  }
-});
