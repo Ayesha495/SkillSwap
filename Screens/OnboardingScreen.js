@@ -72,9 +72,7 @@ export default function OnboardingScreen({ navigation }) {
         <Text style={styles.buttonText}>Skip</Text>
       </TouchableOpacity>
 
-      <Button title="Continue" onPress={handleContinue} />
-      <Button title="Skip" onPress={() => navigation.replace('MainTabs')} />
-
+     
     </ScrollView>
   );
 }
