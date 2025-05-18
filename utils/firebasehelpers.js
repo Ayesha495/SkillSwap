@@ -1,27 +1,43 @@
-import { ref, set, get, child } from 'firebase/database';
+import { ref, set, get, child, update } from 'firebase/database';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { db } from '../firebase'; // make sure this path is correct
 import { auth } from '../firebase'; // make sure this path is correct
 
-export const saveUserProfile = async (uid, name, image, skillsToTeach, bio) => {
+// Add skillsToLearn as a parameter
+export const saveUserProfile = async (uid, name, image, skillsToTeach, bio, email, skillsToLearn) => {
   try {
     const userData = {
       name,
       bio,
-      email: auth.currentUser.email, // <- matches setEmail(data.email)
-      image: image,             // <- matches setImage(data.image)
+      email: email || '', // fallback to empty string if email is missing
+      image,
       skillsToTeach,
+      skillsToLearn: skillsToLearn || [], // <-- NEW
     };
 
     // Save to Firebase Realtime Database
     await set(ref(db, `users/${uid}`), userData);
 
+    // Save each skill to the topics collection
+    if (skillsToTeach && Array.isArray(skillsToTeach)) {
+      const updates = {};
+      skillsToTeach.forEach(skill => {
+        // Each topic will have a list of userIds who can teach it
+        updates[`topics/${skill}`] = {
+          name: skill,
+          // Optionally, you can store more info, like a list of userIds
+        };
+      });
+      await update(ref(db), updates);
+    }
+
     // Save to AsyncStorage
     await AsyncStorage.setItem('userProfile', JSON.stringify(userData));
 
-    console.log('✅ Profile saved to Firebase and local storage');
+    console.log('✅ Profile and topics saved to Firebase and local storage');
   } catch (error) {
     console.error('❌ Error saving profile:', error);
+    throw error; // rethrow so Profile screen can show alert
   }
 };
 

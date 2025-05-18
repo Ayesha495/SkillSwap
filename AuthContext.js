@@ -2,37 +2,54 @@
 import React, { createContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { loadUserProfile, loadCachedProfile } from './utils/firebasehelpers';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from './firebase'; 
 
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [isLoggedIn, setIsLoggedIn] = useState(null);
-  const [user, setUser] = useState(null); // ✅ FIXED: define user state
-  const [userProfile, setUserProfile] = useState(null); // for profile data
+  const [user, setUser] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
 
+  // Restore user from AsyncStorage for fast UI (optional)
   useEffect(() => {
-    const checkLoginStatus = async () => {
+    const restoreUser = async () => {
       const storedUser = await AsyncStorage.getItem('user');
-      console.log('Stored User:', storedUser);
       if (storedUser) {
-        const parsed = JSON.parse(storedUser);
-        setUser(parsed); // ✅ set user when found in AsyncStorage
+        setUser(JSON.parse(storedUser));
         setIsLoggedIn(true);
-      } else {
-        setIsLoggedIn(false);
       }
     };
-    checkLoginStatus();
+    restoreUser();
+  }, []);
+
+  // Listen to Firebase Auth state changes (source of truth)
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        setUser(firebaseUser);
+        setIsLoggedIn(true);
+        await AsyncStorage.setItem('user', JSON.stringify(firebaseUser));
+      } else {
+        setUser(null);
+        setIsLoggedIn(false);
+        await AsyncStorage.removeItem('user');
+        await AsyncStorage.removeItem('userProfile');
+        setUserProfile(null);
+      }
+      setLoading(false);
+    });
+    return unsubscribe;
   }, []);
 
   useEffect(() => {
     if (user?.uid) {
-      // First try loading from local storage
       loadCachedProfile().then(cached => {
         if (cached) {
           setUserProfile(cached);
         } else {
-          // Otherwise load from Firebase
           loadUserProfile(user.uid).then(profile => {
             if (profile) {
               setUserProfile(profile);
@@ -44,7 +61,7 @@ export const AuthProvider = ({ children }) => {
   }, [user]);
 
   return (
-    <AuthContext.Provider value={{ isLoggedIn, setIsLoggedIn, user, setUser, userProfile }}>
+    <AuthContext.Provider value={{ isLoggedIn, setIsLoggedIn, user, setUser, userProfile, loading }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,219 +1,346 @@
-import React, { useEffect, useState, useContext } from 'react';
-import { View, Text, TextInput, Button, Image, StyleSheet, ScrollView, Alert } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ref, get, child } from 'firebase/database';
-import { db, auth } from '../firebase';
-import { useNavigation } from '@react-navigation/native';
-import { signOut } from 'firebase/auth';
-import { saveUserProfile } from '../utils/firebasehelpers';
+import React, { useContext, useEffect, useState } from 'react';
+import { 
+  View, 
+  Text, 
+  Image, 
+  TouchableOpacity, 
+  StyleSheet, 
+  ScrollView, 
+  ActivityIndicator,
+  SafeAreaView,
+  StatusBar
+} from 'react-native';
 import { AuthContext } from '../AuthContext';
+import { useNavigation } from '@react-navigation/native';
+import { getDatabase, ref, get } from 'firebase/database';
+import { Ionicons } from '@expo/vector-icons';
 
-export default function Profile() {
-  const [name, setName] = useState('');
-  const [skillsToTeach, setSkillsToTeach] = useState([]);
-  const [newSkill, setNewSkill] = useState('');
-  const [image, setImage] = useState(null);
-  const [bio, setBio] = useState('');
-
-
-  const { user, loading } = useContext(AuthContext);
-  if (loading) {
-  return <ActivityIndicator size="large" style={{ flex: 1 }} />;
-}
-const userId = user?.uid;
-
+const ProfileScreen = () => {
+  const { user } = useContext(AuthContext);
   const navigation = useNavigation();
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      await AsyncStorage.removeItem('user');
-      navigation.replace('Login');
-      Alert.alert('Logged Out', 'You have been logged out successfully.');
-    } catch (error) {
-      Alert.alert('Logout Error', error.message);
-    }
-  };
-
- useEffect(() => {
-  const loadProfile = async () => {
-    if (!userId) {
-      console.log('❌ No userId yet');
-      return;
-    }
-
-    console.log('✅ userId:', userId);
-
-    try {
-      // 1. Load from AsyncStorage first (cached)
-      const cachedProfile = await AsyncStorage.getItem('userProfile');
-      if (cachedProfile) {
-        const data = JSON.parse(cachedProfile);
-        setName(data.name || '');
-        setBio(data.bio || '');
-        setSkillsToTeach(data.skillsToTeach || []);
-        setImage(data.image || null);
-        console.log('✅ Loaded profile from cache');
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!user?.uid) return;
+      try {
+        const db = getDatabase();
+        const userRef = ref(db, `users/${user.uid}`);
+        const snapshot = await get(userRef);
+        if (snapshot.exists()) {
+          setProfile(snapshot.val());
+        } else {
+          setProfile({
+            name: user.displayName || 'No Name',
+            email: user.email,
+            photoURL: user.photoURL,
+            bio: 'No bio provided.',
+            skillsToTeach: [],
+            skillsToLearn: [],
+          });
+        }
+      } catch (error) {
+        setProfile({
+          name: user.displayName || 'No Name',
+          email: user.email,
+          photoURL: user.photoURL,
+          bio: 'No bio provided.',
+          skillsToTeach: [],
+          skillsToLearn: [],
+        });
+      } finally {
+        setLoading(false);
       }
+    };
+    fetchProfile();
+  }, [user]);
 
-      // 2. Then try to load fresh data from Firebase
-      const snapshot = await get(child(ref(db), `users/${userId}`));
-      if (snapshot.exists()) {
-        const data = snapshot.val();
-        setName(data.name || '');
-        setBio(data.bio || '');
-        setSkillsToTeach(data.skillsToTeach || []);
-        setImage(data.image || null);
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#0B8C7C" />
+      </View>
+    );
+  }
 
-        // update cache
-        await AsyncStorage.setItem('userProfile', JSON.stringify(data));
-        console.log('✅ Loaded profile from Firebase and updated cache');
-      }
-    } catch (error) {
-      Alert.alert('Error', error.message);
-    }
-  };
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor="#F0F9F9" />
+      <ScrollView 
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
+          <View style={styles.avatarContainer}>
+            <Image
+              source={
+                profile?.image
+                  ? { uri: profile.image }
+                  : require('../assets/profile.png')
+              }
+              style={styles.avatar}
+            />
+            <TouchableOpacity 
+              style={styles.editProfileButton}
+              onPress={() => navigation.navigate('EditProfile')}
+            >
+              <Ionicons name="pencil" size={16} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.userInfo}>
+            <Text style={styles.name}>{profile?.name}</Text>
+            <Text style={styles.email}>{profile?.email}</Text>
+          </View>
+        </View>
 
-  loadProfile();
-}, [userId]);
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Ionicons name="information-circle-outline" size={20} color="#0B8C7C" />
+            <Text style={styles.sectionTitle}>About Me</Text>
+          </View>
+          <Text style={styles.bio}>{profile?.bio}</Text>
+        </View>
 
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Ionicons name="school-outline" size={20} color="#0B8C7C" />
+            <Text style={styles.sectionTitle}>Skills to Teach</Text>
+          </View>
+          <View style={styles.skillsContainer}>
+            {profile?.skillsToTeach && profile.skillsToTeach.length > 0 ? (
+              profile.skillsToTeach.map((skill, idx) => (
+                <View key={idx} style={styles.skillPill}>
+                  <Text style={styles.skillText}>{skill}</Text>
+                </View>
+              ))
+            ) : (
+              <View style={styles.emptyStateContainer}>
+                <Text style={styles.noSkills}>No skills listed yet</Text>
+              </View>
+            )}
+          </View>
+        </View>
 
-  const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.5,
-    });
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Ionicons name="book-outline" size={20} color="#0B8C7C" />
+            <Text style={styles.sectionTitle}>Skills to Learn</Text>
+          </View>
+          <View style={styles.skillsContainer}>
+            {profile?.skillsToLearn && profile.skillsToLearn.length > 0 ? (
+              profile.skillsToLearn.map((skill, idx) => (
+                <View key={idx} style={styles.learnSkillPill}>
+                  <Text style={styles.learnSkillText}>{skill}</Text>
+                </View>
+              ))
+            ) : (
+              <View style={styles.emptyStateContainer}>
+                <Text style={styles.noSkills}>No skills listed yet</Text>
+              </View>
+            )}
+          </View>
+        </View>
+        <TouchableOpacity
+          style={styles.favoritesButton}
+          onPress={() => navigation.navigate('Favorites')}
+        >
+          <Ionicons name="star" size={18} color="#FFD700" style={styles.buttonIcon} />
+          <Text style={styles.favoritesButtonText}>Favorites</Text>
+        </TouchableOpacity>
 
-    if (!result.canceled) {
-      setImage(result.assets[0].uri);
-    }
-  };
-
-  const saveProfile = async () => {
-    try {
-      await saveUserProfile(userId, name, image, skillsToTeach, bio);
-      Alert.alert('Profile Updated');
-    } catch (error) {
-      Alert.alert('Error', error.message);
-    }
-  };
-
-  const addSkill = () => {
-    if (newSkill.trim()) {
-      setSkillsToTeach([...skillsToTeach, newSkill.trim()]);
-      setNewSkill('');
-    }
-  };
-
-  const removeSkill = (index) => {
-  Alert.alert(
-    'Remove Skill',
-    `Are you sure you want to remove "${skillsToTeach[index]}"?`,
-    [
-      {
-        text: 'Cancel',
-        style: 'cancel',
-      },
-      {
-        text: 'Remove',
-        style: 'destructive',
-        onPress: () => {
-          const updated = [...skillsToTeach];
-          updated.splice(index, 1);
-          setSkillsToTeach(updated);
-        },
-      },
-    ]
+        <TouchableOpacity
+          style={styles.editButton}
+          onPress={() => navigation.navigate('EditProfile')}
+        >
+          <Ionicons name="create-outline" size={18} color="#FFFFFF" style={styles.buttonIcon} />
+          <Text style={styles.editButtonText}>Edit Profile</Text>
+        </TouchableOpacity>
+        
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
-
-  return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Profile</Text>
-      <Image
-        source={image ? { uri: image } : require('../assets/profile.png')}
-        style={styles.avatar}
-      />
-      <Button title="Pick Profile Image" onPress={pickImage} />
-
-      <TextInput
-        placeholder="Name"
-        value={name}
-        onChangeText={setName}
-        style={styles.input}
-      />
-
-      <TextInput
-  placeholder="Bio"
-  value={bio}
-  onChangeText={setBio}
-  style={[styles.input, { height: 80 }]}
-  multiline
-/>
-
-      <TextInput
-        placeholder="Add skill to teach"
-        value={newSkill}
-        onChangeText={setNewSkill}
-        style={styles.input}
-      />
-      <Button title="Add Skill" onPress={addSkill} />
-      
-
-      <Text style={styles.subTitle}>Skills to Teach:</Text>
-      {skillsToTeach.map((skill, index) => (
-        <View key={index} style={styles.skillItem}>
-          <Text>{skill}</Text>
-          <Button title="Remove" onPress={() => removeSkill(index)} />
-        </View>
-      ))}
-
-      
-
-
-      <Button title="Save Profile" onPress={saveProfile} />
-
-      <View style={{ marginTop: 40 }}>
-        <Button title="Log Out" onPress={handleLogout} color="#D0604C" />
-      </View>
-    </ScrollView>
-  );
-}
-
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F0F9F9',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F0F9F9',
+  },
   container: {
-    padding: 20,
-    paddingBottom: 80,
+    padding: 16,
+    paddingBottom: 32,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    textAlign: 'center',
+  header: {
+    alignItems: 'center',
+    marginBottom: 24,
+    marginTop: 12,
   },
-  subTitle: {
-    fontSize: 18,
-    marginTop: 20,
-    marginBottom: 10,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    padding: 10,
-    marginBottom: 10,
+  avatarContainer: {
+    position: 'relative',
+    marginBottom: 16,
   },
   avatar: {
     width: 120,
     height: 120,
     borderRadius: 60,
-    alignSelf: 'center',
-    marginBottom: 20,
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  skillItem: {
+  editProfileButton: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#0B8C7C',
+    borderRadius: 20,
+    width: 34,
+    height: 34,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  userInfo: {
+    alignItems: 'center',
+  },
+  name: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#0D4D56',
+    marginBottom: 4,
+  },
+  email: {
+    fontSize: 16,
+    color: '#5A8D9A',
+    marginBottom: 8,
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  cardHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 10,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontWeight: '600',
+    fontSize: 18,
+    color: '#0B8C7C',
+    marginLeft: 8,
+  },
+  bio: {
+    fontSize: 16,
+    color: '#2E4F4F',
+    lineHeight: 22,
+  },
+  skillsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -4,
+  },
+  skillPill: {
+    backgroundColor: '#E0F5F2',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    margin: 4,
+    borderWidth: 1,
+    borderColor: '#D0EBE8',
+  },
+  skillText: {
+    color: '#0B8C7C',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  learnSkillPill: {
+    backgroundColor: '#E1F0FF',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    margin: 4,
+    borderWidth: 1,
+    borderColor: '#D1E6FF',
+  },
+  learnSkillText: {
+    color: '#1A73E8',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  noSkills: {
+    color: '#95AEBB',
+    fontStyle: 'italic',
+    fontSize: 15,
+  },
+  emptyStateContainer: {
+    width: '100%',
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
+  editButton: {
+    backgroundColor: '#0B8C7C',
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  buttonIcon: {
+    marginRight: 8,
+  },
+  editButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  favoritesButton: {
+    backgroundColor: '#FFFFFF', // white interior
+    borderRadius: 24,           // more pill-like
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 12,
+    borderWidth: 2,
+    borderColor: '#0B8C7C',     // teal border
+    shadowColor: '#0B8C7C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  favoritesButtonText: {
+    color: '#0B8C7C',           
+    fontWeight: '700',
+    fontSize: 16,
+    letterSpacing: 1,
   },
 });
+
+export default ProfileScreen;

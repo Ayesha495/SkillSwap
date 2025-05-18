@@ -8,7 +8,11 @@ import OnboardingScreen from './Screens/OnboardingScreen';
 import MainTabs from './Screens/MainTabs';
 import SplashScreen from './Screens/SplashScreen';
 import GuideScreen1 from './Screens/GuideScreen1';
-
+import TeacherProfile from './Screens/TeacherProfile';
+import AllTeachersScreen from './Screens/AllTeachersScreen';
+import SkillUsersScreen from './Screens/SkillUsersScreen';
+import EditProfileScreen from './Screens/EditProfileScreen';
+import ProfileScreen from './Screens/Profile';
 
 const Stack = createNativeStackNavigator();
 
@@ -22,6 +26,11 @@ function AppInner() {
       {isLoggedIn ? (
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="MainTabs" component={MainTabs} />
+          <Stack.Screen name="TeacherProfile" component={TeacherProfile} />
+          <Stack.Screen name="AllTeachers" component={AllTeachersScreen} />
+          <Stack.Screen name="SkillUsers" component={SkillUsersScreen} />
+          <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+          <Stack.Screen name="Profile" component={ProfileScreen} />
         </Stack.Navigator>
 
       ) : (
