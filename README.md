@@ -33,12 +33,12 @@
 
 ---
 
-## 📲 Screens Overview (~15 Screens)
+## 📲 Screens Overview 
 
 - `LoginScreen`, `RegisterScreen`, `ForgotPasswordScreen`
-- `HomeScreen`, `SearchScreen`, `FavoritesScreen`
+- `HomeScreen`, , `FavoritesScreen`
 - `ProfileScreen`, `SettingsScreen`, `RatingScreen`
-- `TopicListScreen`, `TopicDetailScreen`
+- , `TopicDetailScreen`
 - `SkillDetailScreen`, `EditProfileScreen`
 - `NotificationsScreen` *(planned)*
 
@@ -76,25 +76,26 @@
       "userId123": 4
     }
   }
-}```
-🚀 Getting Started
-1. Clone the Repository
+}
+```
+##🚀 Getting Started
+###1. Clone the Repository
 bash
 Copy
 Edit
 git clone https://github.com/yourusername/skillswap-app.git
 cd skillswap-app
-2. Install Dependencies
+###2. Install Dependencies
 bash
 Copy
 Edit
 npm install
-3. Start the App
+###3. Start the App
 bash
 Copy
 Edit
 npx expo start
-⚙️ Setup Firebase
+##⚙️ Setup Firebase
 Make sure you have:
 
 A Firebase project created
@@ -111,16 +112,16 @@ google-services.json (for Android) in ./android/app
 
 GoogleService-Info.plist (for iOS) in ./ios
 
-✅ Todos
- Profile & Skill Management
+##✅ Todos
+ Profile & Skill Management✅
 
- Search & Skill Discovery
+ Search & Skill Discovery✅
 
- Firebase Integration (Auth, DB, Storage)
+ Firebase Integration (Auth, DB, Storage)✅
 
- Local Caching
+ Local Caching✅
 
- Ratings System
+ Ratings System✅
 
  Push Notifications (FCM)
 
