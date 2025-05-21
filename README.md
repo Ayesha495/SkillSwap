@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 # SkillSwap
 
 *SkillSwap* is a mobile application built using *React Native (Expo)* and *Firebase*, designed to connect users for mutual skill exchange. Whether you want to teach a skill or learn one, SkillSwap helps you find the perfect match.
