@@ -142,6 +142,7 @@ const ProfileScreen = () => {
           </View>
         </View>
         <TouchableOpacity
+        
           style={styles.favoritesButton}
           onPress={() => navigation.navigate('Favorites')}
         >

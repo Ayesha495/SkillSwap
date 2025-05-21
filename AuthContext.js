@@ -13,7 +13,7 @@ export const AuthProvider = ({ children }) => {
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Restore user from AsyncStorage for fast UI (optional)
+  // Restore user from AsyncStorage for fast UI   
   useEffect(() => {
     const restoreUser = async () => {
       const storedUser = await AsyncStorage.getItem('user');

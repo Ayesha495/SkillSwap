@@ -1,7 +1,6 @@
 import { ref, set, get, child, update } from 'firebase/database';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { db } from '../firebase'; // make sure this path is correct
-import { auth } from '../firebase'; // make sure this path is correct
 
 // Add skillsToLearn as a parameter
 export const saveUserProfile = async (uid, name, image, skillsToTeach, bio, email, skillsToLearn) => {
@@ -9,10 +8,10 @@ export const saveUserProfile = async (uid, name, image, skillsToTeach, bio, emai
     const userData = {
       name,
       bio,
-      email: email || '', // fallback to empty string if email is missing
+      email: email || '', 
       image,
       skillsToTeach,
-      skillsToLearn: skillsToLearn || [], // <-- NEW
+      skillsToLearn: skillsToLearn || [], 
     };
 
     // Save to Firebase Realtime Database
@@ -37,7 +36,7 @@ export const saveUserProfile = async (uid, name, image, skillsToTeach, bio, emai
     console.log('✅ Profile and topics saved to Firebase and local storage');
   } catch (error) {
     console.error('❌ Error saving profile:', error);
-    throw error; // rethrow so Profile screen can show alert
+    throw error; 
   }
 };
 

@@ -12,10 +12,8 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Search, UserPlus, Compass, Bell, Star } from 'lucide-react-native';
-import { ref, onValue, get, set, remove  } from 'firebase/database';
-import { db } from '../firebase';
-import { getAuth } from 'firebase/auth';
 import { AuthContext } from '../AuthContext';
+
 const HomeScreen = () => {
   const navigation = useNavigation();
   const { user, loading } = useContext(AuthContext);
@@ -25,33 +23,55 @@ const HomeScreen = () => {
   const [search, setSearch] = useState('');
   const [userRatings, setUserRatings] = useState({});
   const [favoriteTeachers, setFavoriteTeachers] = useState([]);
-  const [filteredUsers, setFilteredUsers] = useState([]); // <-- Add filteredUsers state
+  const [filteredUsers, setFilteredUsers] = useState([]);
 
-  // Fetch users from Firebase
+  const API_BASE_URL = 'https://console.firebase.google.com/project/skillswap-4980a/database/skillswap-4980a-default-rtdb/data/~2F'; // Replace with your Firebase project URL
+
   useEffect(() => {
-    const usersRef = ref(db, 'users');
-    const unsubscribe = onValue(usersRef, (snapshot) => {
-      const data = snapshot.val();
+    fetchUsers();
+  }, []);
+
+  useEffect(() => {
+    fetchTopics();
+  }, []);
+
+  useEffect(() => {
+    if (featuredUsers.length === 0) {
+      setUserRatings({});
+      return;
+    }
+    fetchAllRatings();
+  }, [featuredUsers]);
+
+  useEffect(() => {
+    if (!user) return;
+    fetchFavorites();
+  }, [user]);
+
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/users.json`);
+      const data = await response.json();
       if (data) {
         const usersArray = Object.keys(data).map(uid => ({
           id: uid,
           ...data[uid],
         }));
         setFeaturedUsers(usersArray);
-        setFilteredUsers(usersArray); // <-- Initialize filteredUsers
+        setFilteredUsers(usersArray);
       } else {
         setFeaturedUsers([]);
-        setFilteredUsers([]); // <-- Initialize filteredUsers
+        setFilteredUsers([]);
       }
-    });
-    return () => unsubscribe();
-  }, []);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
+  };
 
-  // Fetch topics from Firebase
-  useEffect(() => {
-    const topicsRef = ref(db, 'topics');
-    const unsubscribe = onValue(topicsRef, (snapshot) => {
-      const data = snapshot.val();
+  const fetchTopics = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/topics.json`);
+      const data = await response.json();
       if (data) {
         const topicsArray = Object.keys(data).map(id => ({
           id,
@@ -61,22 +81,17 @@ const HomeScreen = () => {
       } else {
         setTopics([]);
       }
-    });
-    return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    if (featuredUsers.length === 0) {
-      setUserRatings({});
-      return;
+    } catch (error) {
+      console.error('Error fetching topics:', error);
     }
+  };
 
-    const fetchAllRatings = async () => {
+  const fetchAllRatings = async () => {
+    try {
       const ratingsObj = {};
       for (const user of featuredUsers) {
-        const ratingsRef = ref(db, `ratings/${user.id}`);
-        const snapshot = await get(ratingsRef);
-        const ratings = snapshot.val();
+        const response = await fetch(`${API_BASE_URL}/ratings/${user.id}.json`);
+        const ratings = await response.json();
         if (ratings) {
           const values = Object.values(ratings).map(r => r.rating);
           ratingsObj[user.id] = values.length
@@ -87,46 +102,70 @@ const HomeScreen = () => {
         }
       }
       setUserRatings(ratingsObj);
-    };
+    } catch (error) {
+      console.error('Error fetching ratings:', error);
+    }
+  };
 
-    fetchAllRatings();
-  }, [featuredUsers]);
-
-  // Fetch favorite teachers for the user
-  useEffect(() => {
-    if (!user) return;
-    const favRef = ref(db, `favorites/${user.uid}`);
-    const unsubscribe = onValue(favRef, (snapshot) => {
-      const data = snapshot.val();
+  const fetchFavorites = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/favorites/${user.uid}.json`);
+      const data = await response.json();
       if (data) {
         setFavoriteTeachers(Object.values(data));
       } else {
         setFavoriteTeachers([]);
       }
-    });
-    return () => unsubscribe();
-  }, [user]);
+    } catch (error) {
+      console.error('Error fetching favorites:', error);
+    }
+  };
 
-  // Always define hooks before any return!
+  const toggleFavorite = async (teacherId) => {
+    if (!user) return;
+    
+    if (favoriteTeachers.includes(teacherId)) {
+      try {
+        await fetch(`${API_BASE_URL}/favorites/${user.uid}/${teacherId}.json`, {
+          method: 'DELETE'
+        });
+        setFavoriteTeachers(favoriteTeachers.filter(id => id !== teacherId));
+      } catch (error) {
+        console.error('Error removing favorite:', error);
+      }
+    } else {
+      try {
+        await fetch(`${API_BASE_URL}/favorites/${user.uid}/${teacherId}.json`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(teacherId)
+        });
+        setFavoriteTeachers([...favoriteTeachers, teacherId]);
+      } catch (error) {
+        console.error('Error adding favorite:', error);
+      }
+    }
+  };
+
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
+    Promise.all([fetchUsers(), fetchTopics()])
+      .finally(() => setRefreshing(false));
   }, []);
 
-  // Place this AFTER all hooks
   if (loading) {
     return <View><Text>Loading...</Text></View>;
   }
 
   const currentUserId = user?.uid;
 
-  // Filtered lists based on search, and exclude current user from teachers
   const filteredTopics = topics.filter(topic =>
     topic.name?.toLowerCase().includes(search.toLowerCase())
   );
   const filteredUsersExcludingCurrent = featuredUsers.filter(u => u.id !== currentUserId);
 
-  // Helper to get user's achievements
   const getUserAchievements = () => {
     if (!user) return {};
     const myUser = featuredUsers.find(u => u.id === user.uid);
@@ -140,20 +179,8 @@ const HomeScreen = () => {
 
   const achievements = getUserAchievements();
 
- const toggleFavorite = (teacherId) => {
-  if (!user) return;
-  const favRef = ref(db, `favorites/${user.uid}/${teacherId}`);
-  if (favoriteTeachers.includes(teacherId)) {
-    // Remove from favorites in Firebase
-    remove(favRef);
-  } else {
-    // Add to favorites in Firebase
-    set(favRef, teacherId);
-  }
-};
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <View>
           <Text style={styles.welcomeText}>Welcome to</Text>
@@ -167,7 +194,6 @@ const HomeScreen = () => {
         </TouchableOpacity>
       </View>
       
-      {/* Search Bar */}
       <View style={styles.searchBar}>
         <Search color="#264653" size={18} />
         <TextInput
@@ -185,7 +211,6 @@ const HomeScreen = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#264653" />
         }
       >
-        {/* Featured Categories */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Explore Skills</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -201,7 +226,6 @@ const HomeScreen = () => {
           </ScrollView>
         </View>
         
-        {/* Featured Teachers */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
             <Text className="sectionTitle" style={styles.sectionTitle}>Featured Teachers</Text>
@@ -233,7 +257,6 @@ const HomeScreen = () => {
                   </Text>
                 </View>
                 <View style={styles.skillsContainer}>
-                  {/* Skills to Teach */}
                   {user.skillsToTeach && Array.isArray(user.skillsToTeach) && user.skillsToTeach.length > 0 && (
                     <View style={{
                       flexDirection: 'row',
@@ -256,7 +279,6 @@ const HomeScreen = () => {
                       )}
                     </View>
                   )}
-                  {/* Skills to Learn */}
                   {user.skillsToLearn && Array.isArray(user.skillsToLearn) && user.skillsToLearn.length > 0 && (
                     <View style={{
                       flexDirection: 'row',
@@ -293,7 +315,6 @@ const HomeScreen = () => {
           ))}
         </View>
 
-        {/* What's New Section */}
         <View style={styles.whatNewContainer}>
           <Text style={styles.sectionTitle}>What's New</Text>
           {topics.slice(-3).reverse().map((topic, idx, arr) => (
@@ -305,24 +326,23 @@ const HomeScreen = () => {
               ]}
             >
               <TouchableOpacity
-            key={topic.id}
-            style={[
-              styles.newFeatureCard,
-              idx === arr.length - 1 && { marginBottom: 0 }
-            ]}
-            onPress={() => navigation.navigate('SkillUsers', { skill: topic.name })}
-          >
-            <Compass color="#fff" size={24} />
-            <View style={styles.featureTextContainer}>
-              <Text style={styles.featureTitle}>New Skill: {topic.name}</Text>
-              <Text style={styles.featureDesc}>Now available to learn or teach!</Text>
+                key={topic.id}
+                style={[
+                  styles.newFeatureCard,
+                  idx === arr.length - 1 && { marginBottom: 0 }
+                ]}
+                onPress={() => navigation.navigate('SkillUsers', { skill: topic.name })}
+              >
+                <Compass color="#fff" size={24} />
+                <View style={styles.featureTextContainer}>
+                  <Text style={styles.featureTitle}>New Skill: {topic.name}</Text>
+                  <Text style={styles.featureDesc}>Now available to learn or teach!</Text>
+                </View>
+              </TouchableOpacity>
             </View>
-            </TouchableOpacity>
-              </View>
-            ))}
+          ))}
         </View>
         
-        {/* Enhanced Achievements Section */}
         <View style={styles.achievementsContainer}>
           <Text style={styles.sectionTitle}>My Achievements</Text>
           {user ? (
@@ -330,7 +350,6 @@ const HomeScreen = () => {
               <View style={styles.achievementsHeader}>
                 <Image 
                   source={
-                    // Use the image from the database if available, otherwise fallback
                     (featuredUsers.find(u => u.id === user.uid)?.image && typeof featuredUsers.find(u => u.id === user.uid).image === 'string' && featuredUsers.find(u => u.id === user.uid).image.length > 0)
                       ? { uri: featuredUsers.find(u => u.id === user.uid).image }
                       : require('../assets/profile.png')
@@ -339,7 +358,6 @@ const HomeScreen = () => {
                 />
                 <View>
                   <Text style={styles.achievementUsername}>
-                    {/* Use the username from the database if available, otherwise fallback */}
                     {featuredUsers.find(u => u.id === user.uid)?.name || user.displayName || user.email}
                   </Text>
                   <Text style={styles.memberSince}>
@@ -398,7 +416,6 @@ const HomeScreen = () => {
           )}
         </View>
         
-        {/* Bottom spacing */}
         <View style={styles.bottomPadding} />
       </ScrollView>
     </SafeAreaView>
@@ -441,7 +458,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#E0F5F2',
     paddingHorizontal: 16,
-    paddingVertical: 9, // Decreased from 12 to 8
+    paddingVertical: 9, 
     borderRadius: 12,
     marginHorizontal: 20,
     marginVertical: 16,
@@ -505,7 +522,7 @@ const styles = StyleSheet.create({
     elevation: 2,
     alignItems: 'center',
   },
-  teacherImage: {
+  teacherImage: { 
     width: 60,
     height: 60,
     borderRadius: 30,
@@ -522,7 +539,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   skillsContainer: {
-    flexDirection: 'column', // Change from 'row' to 'column'
+    flexDirection: 'column',
     flexWrap: 'wrap',
     width: '100%',
   },
@@ -557,7 +574,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    marginBottom: 14, // <-- Add this line for spacing between cards
+    marginBottom: 14,
   },
   featureTextContainer: {
     marginLeft: 12,
@@ -573,39 +590,6 @@ const styles = StyleSheet.create({
     color: '#E0F5F2',
     fontSize: 14,
   },
-  getStartedContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
-  },
-  getStartedButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#00B4D8',
-    borderRadius: 12,
-    paddingVertical: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  getStartedText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 16,
-    marginLeft: 8,
-  },
-  tipText: {
-    textAlign: 'center',
-    color: '#788B9A',
-    marginTop: 8,
-    fontSize: 14,
-  },
-  bottomPadding: {
-    height: 80,
-  },
-  // Enhanced Achievements Section Styles
   achievementsContainer: {
     paddingHorizontal: 20,
     marginBottom: 24,
@@ -723,17 +707,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 14,
   },
+  bottomPadding: {
+    height: 80,
+  },
 });
-
-// Helper to fetch average rating for a user
-const fetchAverageRating = async (userId) => {
-  const ratingsRef = ref(db, `ratings/${userId}`);
-  const snapshot = await get(ratingsRef);
-  const ratings = snapshot.val();
-  if (!ratings) return 0;
-  const values = Object.values(ratings).map(r => r.rating);
-  if (!values.length) return 0;
-  return values.reduce((a, b) => a + b, 0) / values.length;
-};
 
 export default HomeScreen;

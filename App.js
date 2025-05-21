@@ -7,7 +7,6 @@ import SignupScreen from './Screens/SignupScreen';
 import OnboardingScreen from './Screens/OnboardingScreen';
 import MainTabs from './Screens/MainTabs';
 import SplashScreen from './Screens/SplashScreen';
-import GuideScreen1 from './Screens/GuideScreen1';
 import TeacherProfile from './Screens/TeacherProfile';
 import AllTeachersScreen from './Screens/AllTeachersScreen';
 import SkillUsersScreen from './Screens/SkillUsersScreen';

@@ -2,7 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import FavoritesScreen from './FavoritesScreen'; // <-- Import FavoritesScreen
+import FavoritesScreen from './FavoritesScreen'; 
 import Profile from './Profile';
 import HomeScreen from './HomeScreen';
 
